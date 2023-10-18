@@ -1,0 +1,24 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sh -c "uvicorn main:app --reload --port 8000 --host=0.0.0.0"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+  postgres:
+    image: postgres:15.3
+    container_name: 0ataos-db
+    restart: always
+    ports:
+      - "5432:5432"
+    env_file:
+      - dev.env
+    volumes:
+      - ./postgres:/var/lib/postgresql/data

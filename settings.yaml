@@ -1,0 +1,46 @@
+logger_name: 0AtaosLogger
+log_level: INFO
+
+handlers:
+  - type: stream
+    formatter:
+      format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+      date_format: '%Y-%m-%d %H:%M:%S'
+  - type: file
+    relative_path: './logs'
+    max_bytes: "1000000"
+    backup_count: 3
+    formatter:
+      format: '%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(message)s'
+      date_format: '%Y-%m-%d %H:%M:%S'
+
+levels:
+  - name: NOTSET
+    logger_name: NotSetLogger
+    log_level: NOTSET
+    file_path: '../../../logs/notset'
+
+  - name: DEBUG
+    logger_name: DebugLogger
+    log_level: DEBUG
+    file_path: '../../../logs/debug'
+
+  - name: INFO
+    logger_name: InfoLogger
+    log_level: INFO
+    file_path: '../../../logs/info'
+
+  - name: WARNING
+    logger_name: WarningLogger
+    log_level: WARNING
+    file_path: '../../../logs/warning'
+
+  - name: ERROR
+    logger_name: ErrorLogger
+    log_level: ERROR
+    file_path: '../../../logs/error'
+
+  - name: CRITICAL
+    logger_name: CriticalLogger
+    log_level: CRITICAL
+    file_path: '../../../logs/critical'
