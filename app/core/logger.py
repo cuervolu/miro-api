@@ -1,94 +1,140 @@
-import logging
 import os
-import yaml
-
-from datetime import datetime
+import logging
+import datetime
 from rich.logging import RichHandler
+from pathlib import Path
+from dotenv import load_dotenv
 
+load_dotenv('dev.env')
+
+class ColoredFormatter(logging.Formatter):
+    """
+    A custom log message formatter that adds color to log levels.
+    """
+    COLORS = {
+        'DEBUG': 'blue',
+        'INFO': 'green',
+        'WARNING': 'yellow',
+        'ERROR': 'white on red',
+        'CRITICAL': 'white on red',
+    }
+
+    def format(self, record):
+        """
+        Format a log record with added color based on log level.
+
+        Args:
+            record (LogRecord): The log record to format.
+
+        Returns:
+            str: The formatted log message with color.
+        """
+        log_message = super().format(record)
+        log_level = record.levelname
+
+        if log_level in self.COLORS:
+            return f"[{self.COLORS[log_level]}][/]{log_message}"
+
+        return log_message
 
 class Logger:
     """
-    A Singleton logger class that allows dynamic log level configuration.
+    A custom logger configuration that supports rich log output and log file separation.
     """
+    def __init__(self):
+        """
+        Initialize the Logger instance.
+        """
+        self.logger = logging.getLogger('MiroLogger')
+        self.setup_logger()
 
-    _instance = None
+    def setup_logger(self):
+        """
+        Set up the logger with the specified log level and handlers.
+        """
+        log_level = self.get_log_level()
+        self.logger.setLevel(log_level)
 
-    def __new__(cls):
-        """
-        Singleton creation of the Logger instance.
-        """
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance.config = cls.load_config()
-            cls._instance.initialize()
-        return cls._instance
-
-    @classmethod
-    def load_config(cls):
-        """
-        Load the logging configuration from 'settings.yaml'.
-        Raises:
-            Exception: If the 'settings.yaml' file is not found.
-        """
-        try:
-            with open('settings.yaml', 'r') as config_file:
-                return yaml.safe_load(config_file)
-        except FileNotFoundError:
-            raise Exception("The configuration file 'settings.yaml' is not found.")
-
-    def initialize(self):
-        """
-        Initialize the logger with the configured log level and handlers.
-        """
-        self.logger = logging.getLogger(self.config.get('logger_name', 'MiroLogger'))
-        self.logger.setLevel(logging.getLevelName(self.config.get('log_level', 'INFO')))
         self.setup_handlers()
+
+    def get_log_level(self):
+        """
+        Get the log level from the environment variables or use the default level.
+
+        Returns:
+            int: The log level (e.g., logging.DEBUG, logging.INFO).
+        """
+        level_name = os.environ.get('LOG_LEVEL', 'INFO')
+        return getattr(logging, level_name)
 
     def setup_handlers(self):
         """
-        Set up logging handlers based on the configuration.
+        Set up the log handlers for console and file output.
         """
-        self.setup_handler('stream', 0)
-        self.setup_handler('file', 1)
+        self.setup_stream_handler()
+        self.setup_file_handler()
 
-    def setup_handler(self, handler_type, handler_index):
+    def setup_stream_handler(self):
         """
-            Set up a specific logging handler (stream or file) based on the configuration.
-
-            Args:
-                handler_type (str): The type of handler ('stream' or 'file').
-                handler_index (int): The index of the handler configuration.
-
-            Returns:
-                None
+        Set up the stream (console) log handler with rich formatting.
         """
-        handler_config = self.config.get('handlers', [])[handler_index]
-        handler = None
+        handler = RichHandler(markup=True, rich_tracebacks=True, highlighter=None)
+        handler.setFormatter(ColoredFormatter(fmt='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+        self.logger.addHandler(handler)
 
-        if handler_type == 'stream':
-            handler = RichHandler(markup=True, rich_tracebacks=True, highlighter=None)
-        elif handler_type == 'file':
-            current_date = datetime.now().strftime("%Y-%m-%d")
-            logs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../logs'))
-            log_file_path = os.path.join(logs_dir, f'logs-{current_date}.log')
-            handler = logging.FileHandler(log_file_path)
+    def setup_file_handler(self):
+        """
+        Set up the file log handler and create a separate log file for errors.
+        """
+        log_dir = Path(os.environ.get('LOG_DIR', 'logs'))
+        log_dir.mkdir(parents=True, exist_ok=True)
 
-        if handler:
-            handler.setLevel(logging.getLevelName(self.config.get('log_level', 'INFO')))
-            format_str = handler_config.get('formatter', {}).get('format', '')
-            formatter = logging.Formatter(fmt=format_str,
-                                          datefmt=handler_config.get('formatter', {}).get('date_format', None))
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+        current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+        log_file_path = log_dir / f'logs-{current_date}.log'
+        error_log_file_path = log_dir / f'logs-{current_date}-ERROR.log'
+
+        handler = logging.FileHandler(log_file_path)
+        handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - [%(levelname)s] - %(message)s',
+                                               datefmt='%Y-%m-%d %H:%M:%S'))
+        self.logger.addHandler(handler)
+
+        error_handler = logging.FileHandler(error_log_file_path)
+        error_handler.setLevel(logging.ERROR)
+        error_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - [%(levelname)s] - %(message)s',
+                                                     datefmt='%Y-%m-%d %H:%M:%S'))
+        self.logger.addHandler(error_handler)
 
     def set_log_level(self, level):
         """
-        Set the log level dynamically during runtime.
+        Set the log level for the logger.
+
         Args:
-            level (int): The desired log level (e.g., logging.DEBUG, logging.INFO).
+            level (int): The log level to set (e.g., logging.DEBUG, logging.INFO).
         """
         self.logger.setLevel(level)
 
+    def log(self, message, level=logging.INFO):
+        """
+        Log a message with the specified log level.
 
-# Create the Logger instance and expose the logger object
+        Args:
+            message (str): The log message to be recorded.
+            level (int, optional): The log level (e.g., logging.DEBUG, logging.INFO). Defaults to logging.INFO.
+        """
+        log_functions = {
+            logging.DEBUG: self.logger.debug,
+            logging.INFO: self.logger.info,
+            logging.WARNING: self.logger.warning,
+            logging.ERROR: self.logger.error,
+            logging.CRITICAL: self.logger.critical
+        }
+
+        log_function = log_functions.get(level, None)
+
+        if log_function:
+            log_function(message)
+        else:
+            self.logger.warning(f'Invalid log level: {level}. Logging as INFO instead.')
+            self.logger.info(message)
+
 logger = Logger().logger
