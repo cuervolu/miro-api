@@ -1,17 +1,17 @@
-logger_name: 0AtaosLogger
+logger_name: MiroLogger
 log_level: INFO
 
 handlers:
   - type: stream
     formatter:
-      format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+      format: '[bold red][%(name)s][/bold red] - %(asctime)s - [%(levelname)s] - [bold green]%(message)s[/bold green]'
       date_format: '%Y-%m-%d %H:%M:%S'
   - type: file
     relative_path: './logs'
     max_bytes: "1000000"
     backup_count: 3
     formatter:
-      format: '%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(message)s'
+      format: '[bold red blink][%(name)s][/]  - %(asctime)s - [%(levelname)s] - [bold blue]%(message)s[/bold blue]'
       date_format: '%Y-%m-%d %H:%M:%S'
 
 levels:

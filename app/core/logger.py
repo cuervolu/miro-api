@@ -1,8 +1,9 @@
 import logging
 import os
-from datetime import datetime
-
 import yaml
+
+from datetime import datetime
+from rich.logging import RichHandler
 
 
 class Logger:
@@ -39,7 +40,7 @@ class Logger:
         """
         Initialize the logger with the configured log level and handlers.
         """
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(self.config.get('logger_name', 'MiroLogger'))
         self.logger.setLevel(logging.getLevelName(self.config.get('log_level', 'INFO')))
         self.setup_handlers()
 
@@ -52,16 +53,20 @@ class Logger:
 
     def setup_handler(self, handler_type, handler_index):
         """
-        Set up a specific logging handler (stream or file) based on the configuration.
-        Args:
-            handler_type (str): The type of handler ('stream' or 'file').
-            handler_index (int): The index of the handler configuration.
+            Set up a specific logging handler (stream or file) based on the configuration.
+
+            Args:
+                handler_type (str): The type of handler ('stream' or 'file').
+                handler_index (int): The index of the handler configuration.
+
+            Returns:
+                None
         """
         handler_config = self.config.get('handlers', [])[handler_index]
         handler = None
 
         if handler_type == 'stream':
-            handler = logging.StreamHandler()
+            handler = RichHandler(markup=True, rich_tracebacks=True, highlighter=None)
         elif handler_type == 'file':
             current_date = datetime.now().strftime("%Y-%m-%d")
             logs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../logs'))
@@ -70,7 +75,9 @@ class Logger:
 
         if handler:
             handler.setLevel(logging.getLevelName(self.config.get('log_level', 'INFO')))
-            formatter = logging.Formatter(fmt=handler_config.get('formatter', {}).get('format', ''))
+            format_str = handler_config.get('formatter', {}).get('format', '')
+            formatter = logging.Formatter(fmt=format_str,
+                                          datefmt=handler_config.get('formatter', {}).get('date_format', None))
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
