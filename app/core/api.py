@@ -8,6 +8,9 @@ from app.api.v1.controllers import user_controller
 from app.api.v1.controllers.auth import auth_controller
 from app.core.config import settings
 from app.core.logger import logger
+from redis import Redis
+from .redis_manager import redis_instance
+import httpx
 
 
 class MiroAPI(FastAPI):
@@ -85,8 +88,14 @@ class MiroAPI(FastAPI):
 
         @self.on_event("startup")
         async def startup_event():
+            logger.info('Server starting')
+            self.state.redis = redis_instance
+            self.state.client = httpx.AsyncClient()
+            logger.info('Redis connected')
             logger.info('Server started')
 
         @self.on_event("shutdown")
         async def shutdown():
+            logger.info('Server stopping')
+            self.state.redis.close()
             logger.info('Server stopped')

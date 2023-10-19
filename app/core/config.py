@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = load_env('POSTGRES_PASSWORD')
     POSTGRES_DB: str = os.environ.get('POSTGRES_DB')
     SQLALCHEMY_DATABASE_URI: str = os.environ.get('POSTGRES_URL')
+    REDIS_HOST: str = os.environ.get('REDIS_HOST', 'localhost')
+    REDIS_PORT: int = os.environ.get('REDIS_PORT', 6379)
     USERS_OPEN_REGISTRATION: bool = False
     DEBUG: str = os.environ.get('DEBUG', True)
     HOST: str = config('HOST', default='0.0.0.0')
