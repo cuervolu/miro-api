@@ -1,6 +1,7 @@
 import os
 import time
 
+import httpx
 from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
@@ -8,28 +9,26 @@ from app.api.v1.controllers import user_controller
 from app.api.v1.controllers.auth import auth_controller
 from app.core.config import settings
 from app.core.logger import logger
-from redis import Redis
 from .redis_manager import redis_instance
-import httpx
 
 
 class MiroAPI(FastAPI):
-
     def __init__(self):
         self.__server_timezone = None
-        kwargs = \
-            {
-                'title': 'Miro API [latest]',
-                'description': '0Ataos website REST API',
-                'version': settings.CURRENT_VERSION,
-                'open_api_tags': settings.TAGS_METADATA,
-                'docs_url': '/docs',
-                'redoc_url': '/redocs',
-            }
+        kwargs = {
+            "title": "Miro API [latest]",
+            "description": "0Ataos website REST API",
+            "version": settings.CURRENT_VERSION,
+            "open_api_tags": settings.TAGS_METADATA,
+            "docs_url": "/docs",
+            "redoc_url": "/redocs",
+        }
+        self.api_log = logger.get_context_logger("api")
         super().__init__(**kwargs)
 
     @property
-    def server_timezone(self): return self.__server_timezone
+    def server_timezone(self):
+        return self.__server_timezone
 
     def configure(self):
         # Config app
@@ -41,10 +40,10 @@ class MiroAPI(FastAPI):
 
     def setup_server_timezone(self):
         tz = settings.TIMEZONE
-        os.environ['TZ'] = tz
+        os.environ["TZ"] = tz
         time.tzset()
         self.__server_timezone = tz
-        logger.info(f'SERVER TIME ZONE SETTER {tz}')
+        self.api_log.info(f"SERVER TIME ZONE SETTER {tz}")
 
     def setup_middlewares(self):
         self.add_middleware(
@@ -56,13 +55,14 @@ class MiroAPI(FastAPI):
             expose_headers=settings.EXPOSE_HEADERS,
             max_age=settings.MAX_AGE,
         )
-        logger.info('Middlewares Set')
+        self.api_log.info("Middlewares Set")
 
     def setup_base_routes(self):
         """MAIN PATH"""
 
         @self.get("/", include_in_schema=False)
-        async def root(): return {'response': 'Ping!'}
+        async def root():
+            return {"response": "Ping!"}
 
     def setup_routes(self):
         """api ROUTER"""
@@ -76,26 +76,26 @@ class MiroAPI(FastAPI):
 
         # api ROUTER
         api_router = APIRouter()
-        api_router.include_router(v1_router, prefix='/api')
+        api_router.include_router(v1_router, prefix="/api")
 
         # GLOBAL ROUTER
         self.include_router(api_router)
 
-        logger.info('API Routes Set')
+        self.api_log.info("API Routes Set")
 
     def setup_events(self):
         """GLOBAL EVENTS"""
 
         @self.on_event("startup")
         async def startup_event():
-            logger.info('Server starting')
+            self.api_log.info("Server starting")
             self.state.redis = redis_instance
             self.state.client = httpx.AsyncClient()
-            logger.info('Redis connected')
-            logger.info('Server started')
+            self.api_log.info("Redis connected")
+            self.api_log.info("Server started")
 
         @self.on_event("shutdown")
         async def shutdown():
-            logger.info('Server stopping')
+            self.api_log.info("Server stopping")
             self.state.redis.close()
-            logger.info('Server stopped')
+            self.api_log.info("Server stopped")

@@ -16,3 +16,5 @@ python-jose==3.3.0
 redis==5.0.1
 httpx==1.0.0b0
 rich==13.6.0
+loguru==0.7.2
+black==23.10.0
